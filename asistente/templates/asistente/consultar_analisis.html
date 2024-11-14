@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Consultar Análisis de Texto</title>
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'asistente/css/estilo.css' %}">
+</head>
+<body>
+    <div class="container">
+        <h1>Consultar Análisis de Texto</h1>
+
+        <form method="get" action="{% url 'consultar_analisis' %}">
+            <label for="analisis_id">Seleccione un análisis para consultar:</label>
+            <select name="analisis_id" id="analisis_id">
+                <option value="">-- Seleccionar --</option>
+                {% for analisis in analisis_list %}
+                    <option value="{{ analisis.id }}" {% if analisis.id == analisis_seleccionado.id %}selected{% endif %}>
+                        Análisis realizado en {{ analisis.fecha }}
+                    </option>
+                {% endfor %}
+            </select>
+            <button type="submit">Consultar</button>
+        </form>
+
+        {% if error_message %}
+            <div class="error">{{ error_message }}</div>
+        {% elif analisis_seleccionado %}
+            <div class="results">
+                <h2>Detalles del Análisis</h2>
+
+                <div class="result-section">
+                    <h3>Texto Analizado</h3>
+                    <p>{{ analisis_seleccionado.texto }}</p>
+                </div>
+
+                <div class="result-section">
+                    <h3>Frecuencia de Palabras</h3>
+                    <ul>
+                        {% for palabra, frecuencia in analisis_seleccionado.palabras_frecuentes.items %}
+                            <li><strong>{{ palabra }}:</strong> {{ frecuencia }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+
+                <div class="result-section">
+                    <h3>Categorías Léxicas</h3>
+                    <ul>
+                        <li><strong>Sustantivos:</strong> {{ analisis_seleccionado.categorias_lexicas.sustantivos|join:", " }}</li>
+                        <li><strong>Adjetivos:</strong> {{ analisis_seleccionado.categorias_lexicas.adjetivos|join:", " }}</li>
+                        <li><strong>Verbos:</strong> {{ analisis_seleccionado.categorias_lexicas.verbos|join:", " }}</li>
+                        <li><strong>Adverbios:</strong> {{ analisis_seleccionado.categorias_lexicas.adverbios|join:", " }}</li>
+                    </ul>
+                </div>
+
+                <div class="result-section">
+                    <h3>Relaciones Semánticas</h3>
+                    <ul>
+                        {% for palabra, relaciones in analisis_seleccionado.relaciones_semanticas.items %}
+                            <li><strong>{{ palabra }}:</strong> {{ relaciones|join:", " }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</body>
+</html>

@@ -8,6 +8,12 @@
 </head>
 <body>
     <div class="container">
+        <div class="top-buttons">
+            <!-- Botón para ir a la página de consulta de análisis -->
+            <form action="{% url 'consultar_analisis' %}" method="get" style="display: inline;">
+                <button type="submit" class="consultar-btn">Consultar Análisis</button>
+            </form>
+        </div>
         <h1>Asistente de Traducción y Categorización de Palabras</h1>
         
         <form action="{% url 'analizar' %}" method="post" enctype="multipart/form-data">

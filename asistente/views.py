@@ -7,6 +7,11 @@ from pydub import AudioSegment
 from googletrans import Translator
 from collections import Counter
 
+
+from django.shortcuts import render, get_object_or_404, redirect
+
+from .models import Analisis  
+
 from gtts import gTTS
 from django.http import HttpResponse
 
@@ -114,6 +119,15 @@ def analizar(request):
         resultado['frecuencia_palabras'] = frecuencia_palabras
         pasos.append("Conteo de frecuencia de palabras completado.")
 
+        # Guardar los resultados en la base de datos
+        analisis = Analisis.objects.create(
+            texto=texto,
+            palabras_frecuentes=frecuencia_palabras,
+            categorias_lexicas=clasificacion,
+            relaciones_semanticas={"traduccion": texto_traducido}  # Puedes añadir más relaciones semánticas aquí
+        )
+        pasos.append(f"Análisis guardado en la base de datos con ID: {analisis.id}")
+
     return render(request, 'asistente/analizar.html', {'resultado': resultado, 'pasos': pasos})
 
 #generar audio mp3
@@ -139,3 +153,32 @@ def generar_audio_mp3(request):
         return HttpResponse(archivo_mp3)
     except Exception as e:
         return HttpResponse(f"Error al generar el archivo de audio: {e}", status=500)
+    
+
+# Vista para mostrar los análisis guardados y seleccionar uno para visualizar
+def consultar_analisis(request):
+    # Obtener todos los análisis disponibles
+    analisis_list = Analisis.objects.all()
+    
+    # Si se seleccionó un análisis específico, obtener sus detalles
+    analisis_id = request.GET.get('analisis_id')
+    analisis_seleccionado = None
+    error_message = None
+
+    if analisis_id:
+        try:
+            analisis_seleccionado = Analisis.objects.get(id=analisis_id)
+
+            # Verificar que todos los campos estén correctamente guardados
+            if not analisis_seleccionado.texto or not analisis_seleccionado.palabras_frecuentes or not analisis_seleccionado.categorias_lexicas:
+                error_message = "Los datos del análisis están incompletos. Por favor, verifique el análisis seleccionado."
+                
+        except Analisis.DoesNotExist:
+            error_message = "El análisis seleccionado no existe."
+
+    context = {
+        'analisis_list': analisis_list,
+        'analisis_seleccionado': analisis_seleccionado,
+        'error_message': error_message
+    }
+    return render(request, 'asistente/consultar_analisis.html', context)
