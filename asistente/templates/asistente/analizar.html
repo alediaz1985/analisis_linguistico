@@ -7,67 +7,76 @@
     <link rel="stylesheet" href="{% static 'asistente/css/estilo.css' %}">
 </head>
 <body>
-    <h1>Asistente de Traducción y Categorización de Palabras</h1>
-    <form action="{% url 'analizar' %}" method="post" enctype="multipart/form-data">
-        {% csrf_token %}
+    <div class="container">
+        <h1>Asistente de Traducción y Categorización de Palabras</h1>
         
-        <label for="texto">Ingrese texto:</label>
-        <textarea id="texto" name="texto" rows="4" cols="50"></textarea>
-        <button type="button" onclick="activarDictado()">🎙️ Dictar</button>
-        <br><br>
+        <form action="{% url 'analizar' %}" method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            <div class="input-group">
+                <label for="texto">Ingrese texto:</label>
+                <textarea id="texto" name="texto" rows="4" cols="50" placeholder="Escriba su texto aquí..."></textarea>
+                <button type="button" onclick="activarDictado()">🎙️ Dictar</button>
+            </div>
 
-        <label for="audio">Subir archivo de audio:</label>
-        <input type="file" name="audio" accept="audio/*"><br><br>
+            <div class="input-group">
+                <label for="audio">Subir archivo de audio:</label>
+                <input type="file" name="audio" accept="audio/*">
+            </div>
 
-        <label for="archivo_texto">Subir archivo de texto:</label>
-        <input type="file" name="archivo_texto" accept=".txt"><br><br>
+            <div class="input-group">
+                <label for="archivo_texto">Subir archivo de texto:</label>
+                <input type="file" name="archivo_texto" accept=".txt">
+            </div>
 
-        <button type="submit">Analizar</button>
-    </form>
+            <button class="submit-btn" type="submit">Analizar</button>
+        </form>
 
-    {% if pasos %}
-        <h2>Progreso del Análisis:</h2>
-        <ol>
-            {% for paso in pasos %}
-                <li>{{ paso }}</li>
-            {% endfor %}
-        </ol>
-    {% endif %}
+        {% if pasos %}
+            <div class="results">
+                <h2>Progreso del Análisis:</h2>
+                <ol class="steps">
+                    {% for paso in pasos %}
+                        <li>{{ paso }}</li>
+                    {% endfor %}
+                </ol>
+            </div>
+        {% endif %}
 
-    {% if resultado %}
-        <h2>Texto Analizado:</h2>
-        <p><strong>Original:</strong> {{ resultado.texto }}</p>
-        <p><strong>Traducido:</strong> {{ resultado.texto_traducido }}</p>
+        {% if resultado %}
+            <div class="results">
+                <h2>Resultados del Análisis</h2>
 
-        <h2>Clasificación de Palabras:</h2>
-        <h3>Sustantivos:</h3>
-        <ul>
-            {% for sustantivo in resultado.clasificacion.sustantivos %}
-                <li>{{ sustantivo }}</li>
-            {% endfor %}
-        </ul>
+                <div class="result-section">
+                    <h3>Texto Analizado</h3>
+                    <p><strong>Original:</strong> {{ resultado.texto }}</p>
+                    <p><strong>Traducido:</strong> {{ resultado.texto_traducido }}</p>
+                </div>
 
-        <h3>Adjetivos:</h3>
-        <ul>
-            {% for adjetivo in resultado.clasificacion.adjetivos %}
-                <li>{{ adjetivo }}</li>
-            {% endfor %}
-        </ul>
+                <div class="result-section">
+                    <h3>Categorías Léxicas</h3>
+                    <div class="category-list">
+                        <h4>Sustantivos:</h4>
+                        <p>{{ resultado.clasificacion.sustantivos|join:", " }}</p>
+                        <h4>Adjetivos:</h4>
+                        <p>{{ resultado.clasificacion.adjetivos|join:", " }}</p>
+                        <h4>Verbos:</h4>
+                        <p>{{ resultado.clasificacion.verbos|join:", " }}</p>
+                        <h4>Adverbios:</h4>
+                        <p>{{ resultado.clasificacion.adverbios|join:", " }}</p>
+                    </div>
+                </div>
 
-        <h3>Verbos:</h3>
-        <ul>
-            {% for verbo in resultado.clasificacion.verbos %}
-                <li>{{ verbo }}</li>
-            {% endfor %}
-        </ul>
-
-        <h3>Adverbios:</h3>
-        <ul>
-            {% for adverbio in resultado.clasificacion.adverbios %}
-                <li>{{ adverbio }}</li>
-            {% endfor %}
-        </ul>
-    {% endif %}
+                <div class="result-section">
+                    <h3>Traducción de Sinónimos</h3>
+                    <ul class="synonyms-list">
+                        {% for palabra, info in resultado.categorias.items %}
+                            <li><strong>{{ palabra }}:</strong> {{ info.sinonimos|join:", " }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        {% endif %}
+    </div>
 
     <script>
         function activarDictado() {
@@ -80,4 +89,10 @@
             recognition.lang = "es-ES";
             recognition.onresult = function(event) {
                 const texto = event.results[0][0].transcript;
-                document.getElementById("
+                document.getElementById("texto").value += texto;
+            };
+            recognition.start();
+        }
+    </script>
+</body>
+</html>
