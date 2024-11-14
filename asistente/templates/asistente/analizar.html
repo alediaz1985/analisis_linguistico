@@ -39,10 +39,32 @@
         <p><strong>Original:</strong> {{ resultado.texto }}</p>
         <p><strong>Traducido:</strong> {{ resultado.texto_traducido }}</p>
 
-        <h2>Categorías Léxicas y Traducción de Sinónimos:</h2>
+        <h2>Clasificación de Palabras:</h2>
+        <h3>Sustantivos:</h3>
         <ul>
-            {% for palabra, info in resultado.categorias.items %}
-                <li>{{ palabra }}: Sinónimos: {{ info.sinonimos|join:", " }}</li>
+            {% for sustantivo in resultado.clasificacion.sustantivos %}
+                <li>{{ sustantivo }}</li>
+            {% endfor %}
+        </ul>
+
+        <h3>Adjetivos:</h3>
+        <ul>
+            {% for adjetivo in resultado.clasificacion.adjetivos %}
+                <li>{{ adjetivo }}</li>
+            {% endfor %}
+        </ul>
+
+        <h3>Verbos:</h3>
+        <ul>
+            {% for verbo in resultado.clasificacion.verbos %}
+                <li>{{ verbo }}</li>
+            {% endfor %}
+        </ul>
+
+        <h3>Adverbios:</h3>
+        <ul>
+            {% for adverbio in resultado.clasificacion.adverbios %}
+                <li>{{ adverbio }}</li>
             {% endfor %}
         </ul>
     {% endif %}
@@ -58,10 +80,4 @@
             recognition.lang = "es-ES";
             recognition.onresult = function(event) {
                 const texto = event.results[0][0].transcript;
-                document.getElementById("texto").value += texto;
-            };
-            recognition.start();
-        }
-    </script>
-</body>
-</html>
+                document.getElementById("

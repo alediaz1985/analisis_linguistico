@@ -1,31 +1,14 @@
 import os
-import nltk
+import re  # Asegúrate de que el módulo re esté importado
+import spacy
 from django.shortcuts import render
 import speech_recognition as sr
 from pydub import AudioSegment
-from nltk.corpus import wordnet
 from googletrans import Translator
-import re
 
-# Configurar el path de nltk_data si es necesario
-nltk.data.path.append(r'C:\Users\Usuario\nltk_data')
-
-# Inicializar el traductor de Google
+# Inicializar el modelo de spacy para español y el traductor de Google
+nlp = spacy.load("es_core_news_sm")
 translator = Translator()
-
-# Función para descargar los recursos necesarios
-def descargar_recursos_nltk():
-    try:
-        nltk.data.find('corpora/wordnet')
-    except LookupError:
-        nltk.download('wordnet', quiet=True)
-
-    try:
-        nltk.data.find('corpora/omw-1.4')
-    except LookupError:
-        nltk.download('omw-1.4', quiet=True)
-
-descargar_recursos_nltk()
 
 # Procesamiento de audio para reconocimiento de voz
 def reconocimiento_voz(request):
@@ -67,37 +50,16 @@ def traducir_texto(texto, dest='en'):
     except Exception:
         return texto
 
-# Traducción de una lista de palabras
-def traducir_palabras(lista_palabras, dest='es'):
-    palabras_traducidas = []
-    for palabra in lista_palabras:
-        try:
-            traduccion = translator.translate(palabra, src='en', dest=dest)
-            palabras_traducidas.append(traduccion.text)
-        except Exception:
-            palabras_traducidas.append(palabra)
-    return palabras_traducidas
-
-# Categorización y traducción de palabras
-def categorizar_palabras(texto, dest='es'):
-    categorias = {}
-    palabras = re.findall(r'\b\w+\b', texto.lower(), re.UNICODE)
-
-    for palabra in palabras:
-        sinonimos = wordnet.synsets(palabra, lang='spa' if dest == 'es' else 'eng')
-        lista_sinonimos = []
-
-        for sinonimo in sinonimos:
-            nombre_sinonimo = sinonimo.name().split('.')[0]
-            if nombre_sinonimo not in lista_sinonimos:
-                lista_sinonimos.append(nombre_sinonimo)
-
-        lista_sinonimos = traducir_palabras(lista_sinonimos, dest=dest)
-
-        if lista_sinonimos:
-            categorias[palabra] = {"sinonimos": lista_sinonimos}
-    
-    return categorias
+# Clasificación de palabras en función de su tipo gramatical usando Spacy
+def clasificar_palabras_por_tipo(texto):
+    doc = nlp(texto)
+    clasificacion = {
+        'sustantivos': [token.text for token in doc if token.pos_ == 'NOUN'],
+        'adjetivos': [token.text for token in doc if token.pos_ == 'ADJ'],
+        'verbos': [token.text for token in doc if token.pos_ == 'VERB'],
+        'adverbios': [token.text for token in doc if token.pos_ == 'ADV']
+    }
+    return clasificacion
 
 # Vista principal para traducción y categorización de palabras
 def analizar(request):
@@ -131,9 +93,9 @@ def analizar(request):
         resultado['texto_traducido'] = texto_traducido
         pasos.append(f"Texto traducido al {'inglés' if idioma_destino == 'en' else 'español'}: {texto_traducido}")
 
-        # Paso 3: Categorización de Palabras
-        categorias = categorizar_palabras(texto_traducido, dest=idioma_destino)
-        resultado['categorias'] = categorias
-        pasos.append("Categorización de palabras completada.")
+        # Paso 3: Clasificación de Palabras por Tipo
+        clasificacion = clasificar_palabras_por_tipo(texto)
+        resultado['clasificacion'] = clasificacion
+        pasos.append("Clasificación de palabras completada.")
 
     return render(request, 'asistente/analizar.html', {'resultado': resultado, 'pasos': pasos})
