@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Asistente de Análisis Lingüístico</title>
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'asistente/css/estilo.css' %}">
+</head>
+<body>
+    <h1>Asistente de Análisis Lingüístico</h1>
+    <form action="{% url 'analizar' %}" method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        
+        <label for="texto">Ingrese texto:</label>
+        <textarea id="texto" name="texto" rows="4" cols="50"></textarea>
+        <button type="button" onclick="activarDictado()">🎙️ Dictar</button>  <!-- Botón de dictado -->
+        <br><br>
+
+        <label for="audio">Subir archivo de audio:</label>
+        <input type="file" name="audio" accept="audio/*"><br><br>
+
+        <label for="archivo_texto">Subir archivo de texto:</label>
+        <input type="file" name="archivo_texto" accept=".txt"><br><br>
+
+        <button type="submit">Analizar</button>
+    </form>
+
+    {% if resultado %}
+        <h2>Texto Analizado:</h2>
+        <p>{{ resultado.texto }}</p>
+
+        <h2>Palabras Frecuentes:</h2>
+        <ul>
+            {% for palabra, frecuencia in resultado.frecuencia.items %}
+                <li>{{ palabra }}: {{ frecuencia }}</li>
+            {% endfor %}
+        </ul>
+
+        <h2>Categorías Léxicas y Relaciones Semánticas:</h2>
+        <ul>
+            {% for palabra, info in resultado.lexica.items %}
+                <li>{{ palabra }}: Sinónimos: {{ info.sinonimos|join:", " }}</li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+
+    <script>
+        function activarDictado() {
+            if (!('webkitSpeechRecognition' in window)) {
+                alert("Tu navegador no soporta el reconocimiento de voz.");
+                return;
+            }
+
+            const recognition = new webkitSpeechRecognition();
+            recognition.lang = "es-ES"; // Idioma español
+            recognition.continuous = false; // Detenerse después de cada frase
+            recognition.interimResults = false; // No mostrar resultados intermedios
+
+            recognition.onstart = function() {
+                console.log("Dictado activado. Por favor, hable.");
+            };
+
+            recognition.onspeechend = function() {
+                recognition.stop();
+                console.log("Dictado desactivado.");
+            };
+
+            recognition.onerror = function(event) {
+                console.error("Error en el reconocimiento de voz:", event.error);
+            };
+
+            recognition.onresult = function(event) {
+                const texto = event.results[0][0].transcript;
+                document.getElementById("texto").value += texto; // Agrega el texto dictado al área de texto
+                console.log("Texto dictado:", texto);
+            };
+
+            recognition.start();
+        }
+    </script>
+</body>
+</html>
