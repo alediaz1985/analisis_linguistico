@@ -18,6 +18,10 @@
                 <button type="button" onclick="activarDictado()">🎙️ Dictar</button>
             </div>
 
+            <!-- Botón para generar el archivo MP3 -->
+            <button type="button" class="generate-audio-btn" onclick="generarAudio()">Generar MP3 del texto</button>
+            <div id="audio-link" class="audio-link"></div> <!-- Aquí aparecerá el enlace para descargar el MP3 -->
+
             <div class="input-group">
                 <label for="audio">Subir archivo de audio:</label>
                 <input type="file" name="audio" accept="audio/*">
@@ -50,6 +54,15 @@
                     <h3>Texto Analizado</h3>
                     <p><strong>Original:</strong> {{ resultado.texto }}</p>
                     <p><strong>Traducido:</strong> {{ resultado.texto_traducido }}</p>
+                </div>
+
+                <div class="result-section">
+                    <h3>Frecuencia de Palabras</h3>
+                    <ul class="frequency-list">
+                        {% for palabra, cantidad in resultado.frecuencia_palabras %}
+                            <li><strong>{{ palabra }}:</strong> {{ cantidad }}</li>
+                        {% endfor %}
+                    </ul>
                 </div>
 
                 <div class="result-section">
@@ -92,6 +105,32 @@
                 document.getElementById("texto").value += texto;
             };
             recognition.start();
+        }
+
+        function generarAudio() {
+            const texto = document.getElementById("texto").value;
+            if (!texto) {
+                alert("Por favor, ingrese texto antes de generar el audio.");
+                return;
+            }
+
+            fetch("{% url 'generar_audio_mp3' %}", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/x-www-form-urlencoded",
+                    "X-CSRFToken": "{{ csrf_token }}",
+                },
+                body: `texto=${encodeURIComponent(texto)}`
+            })
+            .then(response => response.text())
+            .then(data => {
+                const audioLinkDiv = document.getElementById("audio-link");
+                audioLinkDiv.innerHTML = `<a href="/${data}" target="_blank">Reproducir o Descargar MP3</a>`;
+            })
+            .catch(error => {
+                console.error("Error al generar el audio:", error);
+                alert("Hubo un error al intentar generar el archivo de audio.");
+            });
         }
     </script>
 </body>

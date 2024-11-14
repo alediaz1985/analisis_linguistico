@@ -1,12 +1,16 @@
 import os
-import re  # Asegúrate de que el módulo re esté importado
+import re
 import spacy
 from django.shortcuts import render
 import speech_recognition as sr
 from pydub import AudioSegment
 from googletrans import Translator
+from collections import Counter
 
-# Inicializar el modelo de spacy para español y el traductor de Google
+from gtts import gTTS
+from django.http import HttpResponse
+
+# Inicializar el modelo de spaCy para español y el traductor de Google
 nlp = spacy.load("es_core_news_sm")
 translator = Translator()
 
@@ -50,7 +54,7 @@ def traducir_texto(texto, dest='en'):
     except Exception:
         return texto
 
-# Clasificación de palabras en función de su tipo gramatical usando Spacy
+# Clasificación de palabras en función de su tipo gramatical usando spaCy
 def clasificar_palabras_por_tipo(texto):
     doc = nlp(texto)
     clasificacion = {
@@ -61,7 +65,14 @@ def clasificar_palabras_por_tipo(texto):
     }
     return clasificacion
 
-# Vista principal para traducción y categorización de palabras
+# Contar la frecuencia de cada palabra en el texto
+def contar_frecuencia_palabras(texto):
+    doc = nlp(texto.lower())
+    palabras = [token.text for token in doc if not token.is_punct and not token.is_stop]
+    frecuencia = Counter(palabras).most_common()
+    return frecuencia
+
+# Vista principal para traducción, categorización y frecuencia de palabras
 def analizar(request):
     resultado = {}
     pasos = []  # Lista de pasos a mostrar en la interfaz
@@ -98,4 +109,33 @@ def analizar(request):
         resultado['clasificacion'] = clasificacion
         pasos.append("Clasificación de palabras completada.")
 
+        # Paso 4: Contar Frecuencia de Palabras
+        frecuencia_palabras = contar_frecuencia_palabras(texto)
+        resultado['frecuencia_palabras'] = frecuencia_palabras
+        pasos.append("Conteo de frecuencia de palabras completado.")
+
     return render(request, 'asistente/analizar.html', {'resultado': resultado, 'pasos': pasos})
+
+#generar audio mp3
+
+# Nueva vista para generar el archivo de audio
+def generar_audio_mp3(request):
+    texto = request.POST.get("texto", "")
+    if not texto:
+        return HttpResponse("No se ha proporcionado texto para generar el audio.", status=400)
+
+    # Ruta para el archivo MP3 en la carpeta estática
+    ruta_audio = 'static/asistente/audio/'
+    archivo_mp3 = os.path.join(ruta_audio, 'texto_generado.mp3')
+
+    # Crear la carpeta si no existe
+    if not os.path.exists(ruta_audio):
+        os.makedirs(ruta_audio)
+
+    # Generar el archivo de audio
+    try:
+        tts = gTTS(text=texto, lang='es')
+        tts.save(archivo_mp3)
+        return HttpResponse(archivo_mp3)
+    except Exception as e:
+        return HttpResponse(f"Error al generar el archivo de audio: {e}", status=500)
