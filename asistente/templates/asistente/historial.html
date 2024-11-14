@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Historial de Análisis</title>
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'asistente/css/estilo.css' %}">
+</head>
+<body>
+    <h1>Historial de Análisis</h1>
+
+    <ul>
+        {% for analisis in analisis %}
+            <li>
+                <strong>Fecha:</strong> {{ analisis.fecha }}<br>
+                <strong>Texto Analizado:</strong> {{ analisis.texto }}<br>
+                <strong>Palabras Frecuentes:</strong>
+                <ul>
+                    {% for palabra, frecuencia in analisis.palabras_frecuentes.items %}
+                        <li>{{ palabra }}: {{ frecuencia }}</li>
+                    {% endfor %}
+                </ul>
+                <strong>Categorías Léxicas:</strong>
+                <ul>
+                    {% for palabra, info in analisis.categorias_lexicas.items %}
+                        <li>{{ palabra }}: Sinónimos: {{ info.sinonimos|join:", " }}</li>
+                    {% endfor %}
+                </ul>
+                <strong>Relaciones Semánticas:</strong>
+                <ul>
+                    {% for palabra, relaciones in analisis.relaciones_semanticas.items %}
+                        <li><strong>{{ palabra }}:</strong>
+                            <ul>
+                                {% if relaciones.hiponimos %}
+                                    <li><strong>Hipónimos:</strong> {{ relaciones.hiponimos|join:", " }}</li>
+                                {% endif %}
+                                {% if relaciones.hiperonimos %}
+                                    <li><strong>Hiperónimos:</strong> {{ relaciones.hiperonimos|join:", " }}</li>
+                                {% endif %}
+                                {% if relaciones.antonimos %}
+                                    <li><strong>Antónimos:</strong> {{ relaciones.antonimos|join:", " }}</li>
+                                {% endif %}
+                            </ul>
+                        </li>
+                    {% endfor %}
+                </ul>
+                <hr>
+            </li>
+        {% endfor %}
+    </ul>
+</body>
+</html>
