@@ -2,21 +2,24 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Consultar Análisis de Texto</title>
+    <title>Consultar Análisis</title>
     {% load static %}
     <link rel="stylesheet" href="{% static 'asistente/css/estilo.css' %}">
 </head>
 <body>
     <div class="container">
-        <h1>Consultar Análisis de Texto</h1>
+        <div class="menu-button">
+            <a href="{% url 'analizar' %}" class="btn">Ir al Menú Principal</a>
+        </div>
+        <h1>Consultar Análisis</h1>
 
         <form method="get" action="{% url 'consultar_analisis' %}">
-            <label for="analisis_id">Seleccione un análisis para consultar:</label>
+            <label for="analisis_id">Seleccione un análisis:</label>
             <select name="analisis_id" id="analisis_id">
                 <option value="">-- Seleccionar --</option>
                 {% for analisis in analisis_list %}
-                    <option value="{{ analisis.id }}" {% if analisis.id == analisis_seleccionado.id %}selected{% endif %}>
-                        Análisis realizado en {{ analisis.fecha }}
+                    <option value="{{ analisis.id }}" {% if analisis_seleccionado and analisis.id == analisis_seleccionado.id %}selected{% endif %}>
+                        Análisis del {{ analisis.fecha }}
                     </option>
                 {% endfor %}
             </select>
@@ -27,20 +30,25 @@
             <div class="error">{{ error_message }}</div>
         {% elif analisis_seleccionado %}
             <div class="results">
-                <h2>Detalles del Análisis</h2>
+                <h2>Resultados del Análisis</h2>
 
                 <div class="result-section">
                     <h3>Texto Analizado</h3>
-                    <p>{{ analisis_seleccionado.texto }}</p>
+                    <p><strong>Texto Original:</strong> {{ analisis_seleccionado.texto }}</p>
+                    <p><strong>Traducción:</strong> {{ analisis_seleccionado.relaciones_semanticas.traduccion }}</p>
                 </div>
 
                 <div class="result-section">
                     <h3>Frecuencia de Palabras</h3>
-                    <ul>
-                        {% for palabra, frecuencia in analisis_seleccionado.palabras_frecuentes.items %}
-                            <li><strong>{{ palabra }}:</strong> {{ frecuencia }}</li>
-                        {% endfor %}
-                    </ul>
+                    {% if analisis_seleccionado.palabras_frecuentes %}
+                        <ul>
+                            {% for palabra, frecuencia in analisis_seleccionado.palabras_frecuentes.items %}
+                                <li><strong>{{ palabra }}:</strong> {{ frecuencia }}</li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p>No se encontraron datos de frecuencia de palabras.</p>
+                    {% endif %}
                 </div>
 
                 <div class="result-section">
@@ -54,10 +62,10 @@
                 </div>
 
                 <div class="result-section">
-                    <h3>Relaciones Semánticas</h3>
+                    <h3>Tokens Generados</h3>
                     <ul>
-                        {% for palabra, relaciones in analisis_seleccionado.relaciones_semanticas.items %}
-                            <li><strong>{{ palabra }}:</strong> {{ relaciones|join:", " }}</li>
+                        {% for token in analisis_seleccionado.tokens %}
+                            <li>{{ token }}</li>
                         {% endfor %}
                     </ul>
                 </div>

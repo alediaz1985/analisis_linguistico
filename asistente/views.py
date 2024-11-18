@@ -51,13 +51,33 @@ def reconocimiento_voz(request):
 def leer_archivo_texto(file):
     return file.read().decode('utf-8')
 
-# Traducción completa del texto
-def traducir_texto(texto, dest='en'):
+# Traducción automática con detección de idioma
+def traducir_texto(texto):
+    """
+    Detecta el idioma del texto y lo traduce automáticamente al inglés si está en español,
+    o al español si está en inglés.
+    """
+    if not texto or texto.strip() == "":
+        return "El texto está vacío o no es válido para traducir."
+    
     try:
-        traduccion = translator.translate(texto, dest=dest)
+        # Detectar el idioma del texto
+        idioma_detectado = translator.detect(texto).lang
+
+        # Configurar idioma de destino
+        if idioma_detectado == 'es':
+            idioma_destino = 'en'  # Traducir al inglés
+        elif idioma_detectado == 'en':
+            idioma_destino = 'es'  # Traducir al español
+        else:
+            return texto  # Devuelve el texto original si no es español o inglés
+
+        # Realizar la traducción
+        traduccion = translator.translate(texto, src=idioma_detectado, dest=idioma_destino)
         return traduccion.text
-    except Exception:
-        return texto
+    except Exception as e:
+        print(f"Error en la traducción: {str(e)} | Texto: {texto}")
+        return "Hubo un problema al traducir el texto."
 
 # Clasificación de palabras en función de su tipo gramatical usando spaCy
 def clasificar_palabras_por_tipo(texto):
@@ -84,52 +104,77 @@ def analizar(request):
     texto = ""
 
     if request.method == 'POST':
-        # Paso 1: Recepción del Texto
-        if 'texto' in request.POST and request.POST['texto']:
-            texto = request.POST['texto']
-            pasos.append("Texto ingresado manualmente.")
-        
-        elif 'audio' in request.FILES:
+        # Determinar el origen del texto
+        dictado = request.POST.get("dictado", "false") == "true"  # Verificar si fue dictado
+        origen = None
+
+        if 'audio' in request.FILES:  # Archivo de audio
             texto = reconocimiento_voz(request)
-            pasos.append("Texto recibido mediante reconocimiento de voz.")
-        
-        elif 'archivo_texto' in request.FILES:
-            archivo_texto = request.FILES['archivo_texto']
-            texto = leer_archivo_texto(archivo_texto)
-            pasos.append("Texto cargado desde archivo.")
-        
+            origen = "archivo de audio"
+            pasos.append("Texto recibido mediante reconocimiento de voz (archivo de audio).")
+        elif 'archivo_texto' in request.FILES:  # Archivo de texto
+            texto = leer_archivo_texto(request.FILES['archivo_texto'])
+            origen = "archivo de texto"
+            pasos.append("Texto cargado desde archivo de texto.")
+        elif dictado:  # Texto dictado
+            texto = request.POST['texto']
+            origen = "dictado por voz"
+            pasos.append("Texto dictado por voz.")
+        elif 'texto' in request.POST and request.POST['texto']:  # Texto manual
+            texto = request.POST['texto']
+            origen = "texto ingresado manualmente"
+            pasos.append("Texto ingresado manualmente.")
+        else:  # Ninguna fuente válida
+            pasos.append("No se recibió ningún texto válido para procesar.")
+            return render(request, 'asistente/analizar.html', {'resultado': resultado, 'pasos': pasos})
+
+        # Validar que el texto no esté vacío
+        if not texto.strip():
+            pasos.append("El texto recibido está vacío o no es válido para procesar.")
+            return render(request, 'asistente/analizar.html', {'resultado': resultado, 'pasos': pasos})
+
+        # Procesamiento del texto
         resultado['texto'] = texto
-        pasos.append(f"Texto procesado: {texto}")
+        pasos.append(f"Texto procesado desde: {origen}")
 
-        # Paso 2: Traducción completa del texto
-        idioma_origen = 'es' if re.search(r'[a-zA-Z]', texto) else 'en'
-        idioma_destino = 'en' if idioma_origen == 'es' else 'es'
-        
-        texto_traducido = traducir_texto(texto, dest=idioma_destino)
-        resultado['texto_traducido'] = texto_traducido
-        pasos.append(f"Texto traducido al {'inglés' if idioma_destino == 'en' else 'español'}: {texto_traducido}")
+        # Traducción automática
+        try:
+            texto_traducido = traducir_texto(texto)
+            resultado['texto_traducido'] = texto_traducido
+            pasos.append("Texto traducido automáticamente.")
+        except Exception as e:
+            pasos.append(f"Error durante la traducción automática: {e}")
+            texto_traducido = "No fue posible realizar la traducción."
 
-        # Paso 3: Clasificación de Palabras por Tipo
+        # Clasificación de palabras
         clasificacion = clasificar_palabras_por_tipo(texto)
         resultado['clasificacion'] = clasificacion
         pasos.append("Clasificación de palabras completada.")
 
-        # Paso 4: Contar Frecuencia de Palabras
+        # Conteo de frecuencia de palabras
         frecuencia_palabras = contar_frecuencia_palabras(texto)
         resultado['frecuencia_palabras'] = frecuencia_palabras
-        pasos.append("Conteo de frecuencia de palabras completado.")
+        pasos.append("Frecuencia de palabras calculada.")
+
+        # Tokenización
+        nivel_tokenizacion = request.POST.get("nivel_tokenizacion", "palabra")
+        tokens = tokenizar_texto(texto, nivel=nivel_tokenizacion)
+        resultado['tokens'] = tokens
+        pasos.append(f"Tokenización completada a nivel: {nivel_tokenizacion.capitalize()}.")
+        
 
         # Guardar los resultados en la base de datos
-        analisis = Analisis.objects.create(
+        Analisis.objects.create(
             texto=texto,
-            palabras_frecuentes=frecuencia_palabras,
+            #palabras_frecuentes=frecuencia_palabras,
+            palabras_frecuentes=dict(frecuencia_palabras),  
             categorias_lexicas=clasificacion,
-            relaciones_semanticas={"traduccion": texto_traducido}  # Puedes añadir más relaciones semánticas aquí
+            relaciones_semanticas={"traduccion": texto_traducido},
+            tokens=tokens
         )
-        pasos.append(f"Análisis guardado en la base de datos con ID: {analisis.id}")
+        pasos.append("Resultados guardados en la base de datos.")
 
     return render(request, 'asistente/analizar.html', {'resultado': resultado, 'pasos': pasos})
-
 #generar audio mp3
 
 # Nueva vista para generar el archivo de audio
@@ -182,3 +227,34 @@ def consultar_analisis(request):
         'error_message': error_message
     }
     return render(request, 'asistente/consultar_analisis.html', context)
+
+
+def tokenizar_texto(texto, nivel="palabra"):
+    """
+    Tokeniza el texto según el nivel especificado.
+    
+    Args:
+        texto (str): El texto a tokenizar.
+        nivel (str): Nivel de tokenización ("palabra", "caracter", "subpalabra").
+    
+    Returns:
+        list: Lista de tokens según el nivel de granularidad.
+    """
+    if not texto or texto.strip() == "":
+        return ["El texto está vacío o no es válido para tokenizar."]
+    
+    if nivel == "palabra":
+        # Tokenización por palabras utilizando spaCy
+        doc = nlp(texto)
+        tokens = [token.text for token in doc if not token.is_punct and not token.is_space]
+    elif nivel == "caracter":
+        # Tokenización por caracteres
+        tokens = list(texto)
+    elif nivel == "subpalabra":
+        # Tokenización por subpalabras usando un enfoque simple
+        doc = nlp(texto)
+        tokens = [token.text[:len(token.text)//2] + '-' + token.text[len(token.text)//2:] for token in doc if len(token.text) > 1]
+    else:
+        return ["Nivel de tokenización no reconocido."]
+    
+    return tokens

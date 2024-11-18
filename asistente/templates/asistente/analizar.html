@@ -24,6 +24,16 @@
                 <button type="button" onclick="activarDictado()">🎙️ Dictar</button>
             </div>
 
+            <!-- Selector para nivel de tokenización -->
+            <div class="input-group">
+                <label for="nivel_tokenizacion">Nivel de Tokenización:</label>
+                <select id="nivel_tokenizacion" name="nivel_tokenizacion">
+                    <option value="palabra">Palabra</option>
+                    <option value="caracter">Carácter</option>
+                    <option value="subpalabra">Subpalabra</option>
+                </select>
+            </div>
+
             <!-- Botón para generar el archivo MP3 -->
             <button type="button" class="generate-audio-btn" onclick="generarAudio()">Generar MP3 del texto</button>
             <div id="audio-link" class="audio-link"></div> <!-- Aquí aparecerá el enlace para descargar el MP3 -->
@@ -37,7 +47,7 @@
                 <label for="archivo_texto">Subir archivo de texto:</label>
                 <input type="file" name="archivo_texto" accept=".txt">
             </div>
-
+            <input type="hidden" id="dictado" name="dictado" value="false">
             <button class="submit-btn" type="submit">Analizar</button>
         </form>
 
@@ -85,11 +95,12 @@
                     </div>
                 </div>
 
+                <!-- Nueva sección para mostrar los tokens generados -->
                 <div class="result-section">
-                    <h3>Traducción de Sinónimos</h3>
-                    <ul class="synonyms-list">
-                        {% for palabra, info in resultado.categorias.items %}
-                            <li><strong>{{ palabra }}:</strong> {{ info.sinonimos|join:", " }}</li>
+                    <h3>Tokens Generados</h3>
+                    <ul class="token-list">
+                        {% for token in resultado.tokens %}
+                            <li>{{ token }}</li>
                         {% endfor %}
                     </ul>
                 </div>
@@ -99,19 +110,20 @@
 
     <script>
         function activarDictado() {
-            if (!('webkitSpeechRecognition' in window)) {
-                alert("Tu navegador no soporta el reconocimiento de voz.");
-                return;
-            }
-
-            const recognition = new webkitSpeechRecognition();
-            recognition.lang = "es-ES";
-            recognition.onresult = function(event) {
-                const texto = event.results[0][0].transcript;
-                document.getElementById("texto").value += texto;
-            };
-            recognition.start();
+        if (!('webkitSpeechRecognition' in window)) {
+            alert("Tu navegador no soporta el reconocimiento de voz.");
+            return;
         }
+
+        const recognition = new webkitSpeechRecognition();
+        recognition.lang = "es-ES";
+        recognition.onresult = function(event) {
+            const texto = event.results[0][0].transcript;
+            document.getElementById("texto").value += texto;
+            document.getElementById("dictado").value = "true"; // Marcar como dictado
+        };
+        recognition.start();
+    }
 
         function generarAudio() {
             const texto = document.getElementById("texto").value;
